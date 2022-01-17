@@ -1,0 +1,64 @@
+---
+title: "practical machine learning project"
+author: "Kevin B"
+date: "1/17/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr); library(tidyverse); library(caret); library(randomForest)
+```
+
+First load the data and remove columns with NA values. As well as remove the first 7 columns with variables not pertinent to the exercises
+
+```{r}
+pml_validation <- read_csv("C:/Users/bucze/Downloads/pml-testing.csv",
+                           na = c("NA", "#DIV/0!", ""))
+pml_training <-read.csv("C:/Users/bucze/Downloads/pml-training.csv",
+                          na = c("NA", "#DIV/0!", ""))
+
+cleanvalidation <- pml_validation[, colSums(is.na(pml_validation)) == 0]
+cleantrain <- pml_training[, colSums(is.na(pml_training)) == 0]
+
+cleantrain <- cleantrain[, -c(1:7)]
+cleanvalidation <- cleanvalidation[, -c(1:7)]
+validation <- cleanvalidation
+```
+Then, partition the training data set so that I can validate the model before performing the final test with the test set. 
+
+```{r}
+set.seed(430)
+inTrain <- createDataPartition(y=cleantrain$classe,
+                               p=0.75, list = FALSE)
+training <- cleantrain[inTrain,]
+testing <- cleantrain[-inTrain,]
+```
+
+When the goal of a model is prediction, there's a lot more freedom for model choice because you don't need to be able to derive any knowledge from the model, as would be the case if the goal is for inference. We don't have to understand the model as long as it predicts what we want it to predict.
+
+The goal here is classification, not predicting a quantitative outcome. For this type of problem I thought that random forest or k means clustering would be the best method, and in this case I chose random forest as my method.
+
+```{r}
+#I was getting errors so I had to convert classe to a factor variable instead of a character.
+training$classe = factor(training$classe); testing$classe = factor(testing$classe)
+
+modRF <- train(classe ~ ., data = training, method="rf", ntree = 100)
+modRF
+```
+
+Then checking the model with our testing set.
+
+```{r}
+pred <- predict(modRF, testing)
+confusionMatrix(pred, testing$classe)
+```
+
+We get an accuracy of 99% using our random forest model on the test set. 
+
+And now to run our validation set through the model to see what classifiers we get.
+
+```{r}
+validation_predict <- predict(modRF, validation)
+validation_predict
+```
